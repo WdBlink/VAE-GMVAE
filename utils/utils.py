@@ -14,6 +14,9 @@ import shutil
 import argparse
 import time
 import gzip
+import SimpleITK as sitk
+import nibabel as nib
+import csv
 
 import tensorflow as tf
 
@@ -43,6 +46,8 @@ def load_data(dataset_name):
         return load_MNIST()
     elif(dataset_name == 'FREY'):
         return load_FREY()
+    elif(dataset_name == 'prostate'):
+        return load_prostate()
 
     return None
 
@@ -118,6 +123,94 @@ def load_MNIST():
 
     return train_dataset, valid_dataset, test_dataset
 
+
+def load_prostate():
+    dropbox_path = '/home/liujing/YinPengyu_file/data/prostate/TrainingData_Part1'
+    test_data_path = '/home/liujing/YinPengyu_file/data/prostate/TestData'
+    first = np.zeros([54, 512, 512])
+    x_train_aux = first[np.newaxis, :, :, :]
+    x_train_labels = first[np.newaxis, :, :, :]
+    x_test = first[np.newaxis, :, :, :]
+
+    print("Generating the train data batch……")
+    for subject_id in range(50):
+        subject_name = 'Case%02d' % subject_id
+        # 读取输入mhd文件数据并处理
+        file_list = os.path.join(dropbox_path, subject_name + '.mhd')
+        itk_img = sitk.ReadImage(file_list)
+        img_array = sitk.GetArrayFromImage(itk_img)
+        # 添加一个维度，以便组成batch
+        img_array = img_array[np.newaxis, :, :, :]
+
+        # padding
+        while img_array.shape[1] < 54:
+            img_array = np.pad(
+                img_array, [(0, 0), (0, 1), (0, 0), (0, 0)], mode='constant', constant_values=1)
+
+        while img_array.shape[2] < 512:
+            img_array = np.pad(
+                img_array, [(0, 0), (0, 0), (0, 1), (0, 1)], mode='constant', constant_values=1)
+
+        # 读取标签mhd文件数据并处理
+        label = os.path.join(dropbox_path, subject_name + '_segmentation.mhd')
+        img_label = sitk.ReadImage(label)
+        inputs_label = sitk.GetArrayFromImage(img_label)
+        inputs_label = inputs_label[np.newaxis, :, :, :]
+
+        # padding
+        while inputs_label.shape[1] < 54:
+            inputs_label = np.pad(
+                inputs_label, [(0, 0), (0, 1), (0, 0), (0, 0)], mode='constant', constant_values=1)
+
+        while inputs_label.shape[2] < 512:
+            inputs_label = np.pad(
+                inputs_label, [(0, 0), (0, 0), (0, 1), (0, 1)], mode='constant', constant_values=1)
+
+        x_train_aux = np.insert(x_train_aux, 0, values=img_array, axis=0)
+        x_train_labels = np.insert(x_train_labels, 0, values=inputs_label, axis=0)
+    print("Finished")
+    print("The test data size is ", x_train_aux.shape)
+    print("******************************************")
+    print("Generating the test data batch……")
+    for test_id in range(30):
+        test_data_name = 'Case%02d' % test_id
+        # 读取输入mhd文件数据并处理
+        file_list = os.path.join(test_data_path, test_data_name + '.mhd')
+        itk_img = sitk.ReadImage(file_list)
+        img_array = sitk.GetArrayFromImage(itk_img)
+
+        # 添加一个维度，以便组成batch
+        img_array = img_array[np.newaxis, :, :, :]
+
+        # padding
+        while img_array.shape[1] < 54:
+            img_array = np.pad(
+                img_array, [(0, 0), (0, 1), (0, 0), (0, 0)], mode='constant', constant_values=1)
+
+        while img_array.shape[2] < 512:
+            img_array = np.pad(
+                img_array, [(0, 0), (0, 0), (0, 1), (0, 1)], mode='constant', constant_values=1)
+
+        x_test = np.insert(x_test, 0, values=img_array, axis=0)
+
+    print("Finished")
+    print("The test data size is ", x_test.shape)
+
+    data_dim = np.array(x_train_aux).shape[1]
+    n_train = np.array(x_train_aux).shape[0]
+    train_size = int(n_train * 0.8)
+    valid_size = n_train - train_size
+    x_valid, x_train = merge_datasets(x_train_aux, data_dim, train_size, valid_size)
+
+    train_dataset = Dataset(x_train, x_train_labels)
+    valid_dataset = Dataset(x_valid, x_train_labels)
+    test_dataset = x_test
+
+    print('Train Data: ', train_dataset.x.shape)
+    print('Valid Data: ', valid_dataset.x.shape)
+    print('Test Data: ', test_dataset.x.shape)
+
+    return train_dataset, valid_dataset, test_dataset
 
 
 def merge_datasets(data, data_dim, train_size, valid_size=0):

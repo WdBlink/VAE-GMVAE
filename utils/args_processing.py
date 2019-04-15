@@ -119,7 +119,7 @@ def process_args(args,model):
     flags.restore = args['restore']
     flags.results = args['results']
     flags.plot = args['plot']
-    flags.early_stopping =  args['early_stopping']
+    flags.early_stopping = args['early_stopping']
 
     return config, flags
 

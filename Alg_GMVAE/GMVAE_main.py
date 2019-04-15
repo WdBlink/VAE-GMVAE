@@ -56,11 +56,11 @@ network_params.input_height = data_train.height
 network_params.input_width = data_train.width
 network_params.input_nchannels = data_train.num_channels
 
-network_params.hidden_dim =  config.hidden_dim
-network_params.z_dim =  config.z_dim
-network_params.w_dim =  config.w_dim
-network_params.K =  config.K_clusters
-network_params.num_layers =  config.num_layers
+network_params.hidden_dim = config.hidden_dim
+network_params.z_dim = config.z_dim
+network_params.w_dim = config.w_dim
+network_params.K = config.K_clusters
+network_params.num_layers = config.num_layers
 
 '''  -----------------------------------------------------------------------------
                         COMPUTATION GRAPH (Build the model)
